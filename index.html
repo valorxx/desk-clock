@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🏸 羽毛球费用计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;font-family:"Avenir Next","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:linear-gradient(145deg,#f1f9f6,#f5f8fc);color:#304943}
+.box{max-width:560px;margin:auto;background:rgba(255,255,255,.97);padding:22px 24px 24px;border-radius:22px;box-shadow:0 8px 30px rgba(65,100,90,.09)}
+h1{text-align:center;margin:0;color:#2c6256;font-size:18px;line-height:1.25;font-weight:700}
+.subtitle{text-align:center;margin:4px 0 21px;color:#56756c;font-size:13px;letter-spacing:.5px;font-weight:600}
+label{display:block;margin:13px 0 6px;font-weight:600;font-size:15px;color:#426159}
+input[type=text],input[type=number],input[type=date],input[type=time]{width:100%;height:45px;padding:10px 12px;border:1px solid #d4e4df;border-radius:11px;font-size:16px;outline:none;background:#fcfefd;color:#304943}
+input:focus{border-color:#72ad9d;box-shadow:0 0 0 3px rgba(114,173,157,.12)}
+input::placeholder{color:#a6afad;font-size:13px}
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.time-item{position:relative}
+.time-placeholder{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#a6afad;font-size:13px;pointer-events:none}
+.time-help{font-size:12px;color:#9aa8a4;margin-top:7px}
+.clear-row{margin-top:15px;text-align:right;font-size:12px;color:#4f8fcb;cursor:pointer;user-select:none}
+.clear-row:hover{text-decoration:underline}
+.save-row{display:flex;align-items:center;gap:8px;margin-top:5px}
+.save-row input{width:17px;height:17px;margin:0;accent-color:#55a58c}
+.save-row label{margin:0;font-size:13px;font-weight:500;color:#778985;cursor:pointer}
+button{width:100%;height:45px;margin-top:12px;border:0;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer}
+#calc{background:#4fa88d;color:#fff}#copy{background:#5d91d2;color:#fff;margin-top:10px}
+#result{margin-top:18px;padding:17px;background:#f8fbfa;border:1px solid #e0ece8;border-radius:13px;white-space:pre-wrap;line-height:1.85;min-height:185px;color:#304943;font-size:14px}
+.tip{color:#42685f;font-size:14px;font-weight:400;margin-top:9px;text-align:center;line-height:1.6}
+@media(max-width:420px){.box{padding:20px 17px}.time-row{gap:8px}}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>🏸 羽毛球费用计算器</h1>
+<div class="subtitle">Badminton Calculator</div>
+
+<label>📍 场地名称</label><input id="venue" type="text" placeholder="请输入球馆名称">
+<label>🕐 场地日期</label><input id="date" type="date">
+<label>🕐 场地时间</label>
+<div class="time-row">
+<div class="time-item"><input id="startTime" type="time"><span id="startPH" class="time-placeholder">开始时间</span></div>
+<div class="time-item"><input id="endTime" type="time"><span id="endPH" class="time-placeholder">结束时间</span></div>
+</div>
+<div class="time-help">支持选择时间及手动输入</div>
+
+<label>🕐 时长</label><input id="hours" type="number" step="0.5" min="0.5" placeholder="自动计算时长，也可以手动修改">
+<label>🏟️ 每小时场地费用</label><input id="hourFee" type="number" step="0.01" min="0" placeholder="请输入每小时费用">
+<label>🏟️ 场地数</label><input id="courtCount" type="number" step="1" min="1" placeholder="请输入实际数量">
+<label>🏸 用球数量</label><input id="ballCount" type="number" step="1" min="0" placeholder="请输入实际数量">
+<label>🏸 球单价</label><input id="ballPrice" type="number" step="0.01" min="0" placeholder="请输入羽毛球单价">
+<label>👥 本场人数</label><input id="people" type="number" step="1" min="1" placeholder="请输入参加人数">
+<label>📲 收款人Bizum</label><input id="bizum" type="text" placeholder="请输入收款人Bizum">
+
+<div class="save-row"><input id="saveData" type="checkbox" checked><label for="saveData">保存本次填写内容，下次继续使用</label></div>
+<div class="clear-row" onclick="clearAll()">一键清空</div>
+<button id="calc" onclick="calculate()">🖊️ 计算并生成模版</button>
+<div id="result">填写信息后，点击“计算并生成模版”即可复制球费信息，粘贴到微信/群聊</div>
+<button id="copy" onclick="copyResult()">📋 一键复制</button>
+<div class="tip" id="tip">Developer：XX</div>
+</div>
+
+<script>
+const KEY="badmintonCalculatorData";
+const ids=["venue","startTime","endTime","hours","hourFee","courtCount","ballCount","ballPrice","people","bizum"];
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function setToday(){date.value=today()}
+function money(n){return Number(n).toFixed(2)}
+function fmtDate(v){const [y,m,d]=v.split("-");return y+"年"+Number(m)+"月"+Number(d)+"日"}
+function updateTimePH(){startPH.style.display=startTime.value?"none":"block";endPH.style.display=endTime.value?"none":"block"}
+function calcHours(){const s=startTime.value,e=endTime.value;updateTimePH();if(!s||!e)return;const a=s.split(":").map(Number),b=e.split(":").map(Number);let x=a[0]*60+a[1],y=b[0]*60+b[1];if(y<=x)y+=1440;const h=(y-x)/60;hours.value=h%1?h.toFixed(2):h}
+startTime.addEventListener("change",calcHours);endTime.addEventListener("change",calcHours);
+function getData(){const o={};ids.forEach(id=>o[id]=document.getElementById(id).value);return o}
+function save(){if(saveData.checked)localStorage.setItem(KEY,JSON.stringify(getData()));else localStorage.removeItem(KEY)}
+function load(){setToday();try{const o=JSON.parse(localStorage.getItem(KEY));if(o){ids.forEach(id=>{if(o[id]!==undefined)document.getElementById(id).value=o[id]});setToday()}}catch(e){}updateTimePH()}
+function clearAll(){ids.forEach(id=>document.getElementById(id).value="");setToday();saveData.checked=false;localStorage.removeItem(KEY);result.textContent='填写信息后，点击“计算并生成模版”即可复制球费信息，粘贴到微信/群聊';tip.textContent='Developer：XX';updateTimePH()}
+function calculate(){
+const v=venue.value.trim(),d=date.value,s=startTime.value,e=endTime.value,h=parseFloat(hours.value),hf=parseFloat(hourFee.value),c=parseInt(courtCount.value),bc=parseInt(ballCount.value),bp=parseFloat(ballPrice.value),p=parseInt(people.value),b=bizum.value.trim();
+if(!v||!d||!s||!e||isNaN(h)||isNaN(hf)||isNaN(c)||isNaN(bc)||isNaN(bp)||isNaN(p)||h<=0||c<=0||p<=0){alert("请把所有信息填写完整");return}
+const ct=hf*h*c,bt=bc*bp,total=ct+bt,pp=total/p;
+result.textContent=`🏸 羽毛球费用结算
+
+📍 场地：${v}
+📅 时间：${fmtDate(d)}，时间${s}-${e}，
+🏟️ 场地费：€${money(hf)}*${h}小时*${c}场地=€${money(ct)}，
+🏸 用球费：€${money(bp)}*${bc}个=€${money(bt)}，
+💶 总费用：€${money(ct)}+€${money(bt)}=€${money(total)}
+👥 本场人数：${p}，
+💰 每人应付费用：€${money(total)}/${p}=€${money(pp)}
+📲 收款人Bizum：${b}
+
+🙏 感谢大家参与，期待下次再聚！`;
+save()
+}
+async function copyResult(){
+const t=result.textContent;if(!t||t.includes("填写信息后")){alert("请先计算生成模版");return}
+try{await navigator.clipboard.writeText(t)}catch(e){const x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();document.execCommand("copy");x.remove()}
+tip.textContent="✅ 已复制 · Developer：XX"
+}
+saveData.addEventListener("change",()=>saveData.checked?save():localStorage.removeItem(KEY));
+load();
+</script>
+</body>
+</html>
