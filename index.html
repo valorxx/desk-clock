@@ -153,6 +153,42 @@ label textarea{min-height:120px}
 .cheer em{font-style:normal;font-size:17px;line-height:1.5}
 #toast{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:80;max-width:86%;text-align:center}
 #toast.show{opacity:1}
+input[type=date]{color-scheme:dark}
+/* 统计卡片与图表 */
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 6px}
+.sc{background:#151515;border-radius:14px;padding:12px 14px;min-width:0}
+.sct{font-size:13px;color:#bbb;display:flex;gap:6px;align-items:center}
+.scv{margin-top:8px;color:#ccc;display:flex;align-items:baseline;flex-wrap:wrap}
+.scv b{font-size:26px;color:#fff;font-weight:600;margin-right:2px}
+.scv small{font-size:12px;color:#aaa;margin-right:5px}
+.scs{font-size:11px;color:#777;margin-top:3px}
+.chh{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;font-size:14px;color:#ddd;gap:8px;text-align:center}
+.chh button{width:34px;height:30px;border:1px solid #333;border-radius:8px;flex:none}
+.ch{background:#151515;border-radius:16px;padding:10px 8px 8px}
+.bars{display:flex;gap:2px;align-items:flex-end}
+.bc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.bw{height:126px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;border-bottom:1px solid #2a2a2a}
+.bv{font-size:10px;color:#ddd;white-space:nowrap;margin-bottom:2px;height:12px;line-height:12px;overflow:visible}
+.bar{width:60%;max-width:30px;background:#15391f;border-radius:3px 3px 0 0}
+.bar.hi{background:#4ade80}
+.bl{font-size:11px;color:#bbb;margin-top:4px;white-space:nowrap}
+.bars.dense .bv{font-size:9px}
+.bars.dense .bl{font-size:9px}
+.bars.dense .bar{width:72%}
+h3.sec{margin:20px 0 6px;font-size:15px;font-weight:600;color:#ddd}
+/* 倒数日 */
+.ev{background:#151515;border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.evtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.evname{font-size:17px;font-weight:600;overflow-wrap:anywhere}
+.evdate{font-size:12px;color:var(--mut);margin-top:3px}
+.evnum{text-align:right;white-space:nowrap;flex:none}
+.evnum b{font-size:30px;font-weight:600;margin:0 3px}
+.evnum small{font-size:13px;color:var(--mut)}
+.evnum.fut b{color:#4ade80}
+.evnum.past b{color:#fbbf24}
+.evbtns{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+.evbtns button{min-width:38px;height:32px;border:1px solid #2a2a2a;border-radius:8px;font-size:14px;padding:0 8px}
+.evbtns button:disabled{opacity:.25}
 </style>
 </head>
 <body data-view="clock">
@@ -186,6 +222,7 @@ label textarea{min-height:120px}
   </section>
 
   <section id="v-cal" class="view scroll"></section>
+  <section id="v-days" class="view scroll"></section>
   <section id="v-stats" class="view scroll"></section>
 </main>
 
@@ -196,6 +233,7 @@ label textarea{min-height:120px}
   <button data-act="go" data-v="clock" class="on"><b>🕐</b>时钟</button>
   <button data-act="go" data-v="timer"><b>⏱</b>计时</button>
   <button data-act="go" data-v="cal"><b>📅</b>日历</button>
+  <button data-act="go" data-v="days"><b>📌</b>倒数日</button>
   <button data-act="go" data-v="stats"><b>📊</b>统计</button>
 </nav>
 
@@ -309,6 +347,8 @@ function sanitize(o){
     .map(function(r){return {id:r.id||uid(),tagId:(r.tagId&&valid[r.tagId])?r.tagId:null,date:r.date,sec:Math.round(+r.sec),src:r.src==='manual'?'manual':'timer'}});
   o.settings=Object.assign({downMin:35},o.settings||{});
   var dm=Math.floor(+o.settings.downMin);o.settings.downMin=(dm>=1&&dm<=600)?dm:35;
+  o.days=(o.days||[]).filter(function(e){return e&&typeof e.id==='string'&&typeof e.name==='string'&&e.name.trim()&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)})
+    .slice(0,50).map(function(e){return {id:e.id,name:e.name.trim().slice(0,20),date:e.date}});
   o.v=1;return o;
 }
 function loadDB(){
@@ -488,7 +528,7 @@ function dayHtml(date){
   var total=recs.reduce(function(a,r){return a+r.sec},0);
   var h='<div class="sum">当天计时合计 <b style="color:#fff">'+fmtDur(total)+'</b></div>';
   if(!recs.length)h+='<p class="muted">当天没有记录</p>';
-  h+=recs.map(function(r){return '<div class="row"><div><b>'+esc(tagName(r.tagId))+'</b> '+(qualifies(r)?'✅':'')+'<small>'+(r.src==='manual'?'手动补录':'计时')+'</small></div><div>'+fmtDur(r.sec)+'</div><button class="icon" data-act="delrec" data-id="'+esc(r.id)+'" aria-label="删除">🗑</button></div>'}).join('');
+  h+=recs.map(function(r){return '<div class="row"><div><b>'+esc(tagName(r.tagId))+'</b> '+(qualifies(r)?'✅':'')+'<small>'+(r.src==='manual'?'手动补录':'计时')+'</small></div><div>'+fmtDur(r.sec)+'</div><button class="icon" data-act="recedit" data-id="'+esc(r.id)+'" aria-label="修改">✏️</button><button class="icon" data-act="delrec" data-id="'+esc(r.id)+'" aria-label="删除">🗑</button></div>'}).join('');
   if(date<=ymd(new Date()))h+='<button class="btn" data-act="addrec" data-d="'+date+'">＋ 补录时长</button>';
   return h;
 }
@@ -547,6 +587,7 @@ function refreshViews(){
   if(view==='timer')renderTimer();
   if(view==='cal')renderCal();
   if(view==='stats')renderStats();
+  if(view==='days')renderDays();
   if(view==='clock')updateBadge();
   tick(true);
 }
@@ -621,22 +662,125 @@ function renderCal(){
     +'<div class="wk"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="grid">'+cells+'</div>'
     +'<p class="muted" style="margin-top:14px"><i class="dot" style="background:#16a34a"></i>已打卡　<i class="dot" style="background:#2a1515;border:1px solid #5b2323"></i>未打卡（从第一次打卡那天起算）　灰色：第一次打卡之前。今天未打卡和未来日期留空。点击日期可查看、补录、删除记录。</p></div>';
 }
-var st={y:new Date().getFullYear(),m:new Date().getMonth()};
+var st={y:new Date().getFullYear(),m:new Date().getMonth()}, yr=new Date().getFullYear(), wk=0;
 function cellHtml(x,showN){return '<td><b>'+(showN?x.n:'—')+'</b>'+(showN?'天':'')+'<small>'+fmtHM(x.sec)+'</small></td>'}
+function addDays(ds,n){var p=ds.split('-'),d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n));return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())}
+function diffDays(a,b){var x=a.split('-'),y=b.split('-');return Math.round((Date.UTC(+y[0],+y[1]-1,+y[2])-Date.UTC(+x[0],+x[1]-1,+x[2]))/86400000)}
+function dayTotals(){var m={};DB.records.forEach(function(r){m[r.date]=(m[r.date]||0)+r.sec});return m}
+/* 连续打卡：任意标签当天达标即算打卡；今天还没打卡时，从昨天往回数，不算断 */
+function streaks(){
+  var ok={};DB.records.forEach(function(r){if(qualifies(r))ok[r.date]=1});
+  var days=Object.keys(ok).sort(),best=0,run=0,prev='';
+  days.forEach(function(d){run=(prev&&addDays(prev,1)===d)?run+1:1;if(run>best)best=run;prev=d});
+  var today=ymd(new Date()),cur=0,c=ok[today]?today:addDays(today,-1);
+  while(ok[c]){cur++;c=addDays(c,-1)}
+  return {cur:cur,best:best,days:days.length};
+}
+function hmParts(sec){return '<b>'+Math.floor(sec/3600)+'</b><small>小时</small><b>'+Math.floor(sec%3600/60)+'</b><small>分钟</small>'}
+function hmText(sec){return Math.floor(sec/3600)+'小时'+Math.floor(sec%3600/60)+'分钟'}
+function barChart(vals,labels,hi,dense){
+  var max=Math.max.apply(null,vals.concat([0])),scale=max>0?max:1,maxI=vals.indexOf(max);
+  var cols=vals.map(function(v,i){
+    var show=dense?(i===hi||(i===maxI&&max>0)):true,txt=v>0?(Math.round(v*10)/10).toFixed(1):'0';
+    return '<div class="bc"><div class="bw"><div class="bv">'+(show?txt:'')+'</div><div class="bar'+(i===hi?' hi':'')+'" style="height:'+Math.round(v/scale*100)+'px"></div></div><div class="bl">'+labels[i]+'</div></div>';
+  }).join('');
+  return '<div class="ch"><div class="bars'+(dense?' dense':'')+'">'+cols+'</div></div>';
+}
+function chHead(prev,next,text){return '<div class="chh"><button data-act="'+prev+'">‹</button><span>'+text+'</span><button data-act="'+next+'">›</button></div>'}
 function renderStats(){
-  var py=String(st.y),pm=st.y+'-'+pad(st.m+1);
+  var now=new Date(),today=ymd(now),tot=dayTotals(),sk=streaks(),i;
+  var allSec=totalSec(''),best=null;
+  DB.records.forEach(function(r){if(!best||r.sec>best.sec)best=r});
+  var cards=[['🕒','今日时长',hmParts(tot[today]||0),''],['⏳','累计时长',hmParts(allSec),''],
+    ['📅','打卡天数','<b>'+sk.days+'</b><small>天</small>','有标签达标的天数'],
+    ['🏅','最长一次',best?hmParts(best.sec):'<b>0</b><small>分钟</small>',best?best.date:''],
+    ['🔥','当前连续','<b>'+sk.cur+'</b><small>天</small>',''],['🏆','最长连续','<b>'+sk.best+'</b><small>天</small>','']]
+    .map(function(c){return '<div class="sc"><div class="sct"><span>'+c[0]+'</span>'+c[1]+'</div><div class="scv">'+c[2]+'</div>'+(c[3]?'<div class="scs">'+c[3]+'</div>':'')+'</div>'}).join('');
+  /* 周（周一开始） */
+  var mon=addDays(today,-((now.getDay()+6)%7)+wk*7),wv=[],whi=-1,wsum=0;
+  for(i=0;i<7;i++){var dd=addDays(mon,i),sx=tot[dd]||0;wsum+=sx;wv.push(sx/3600);if(dd===today)whi=i}
+  var wtitle=(wk===0?'本周':mon.slice(5)+' ~ '+addDays(mon,6).slice(5))+'专注时长: '+hmText(wsum);
+  /* 月 */
+  var mn=new Date(st.y,st.m+1,0).getDate(),mv=[],ml=[],mhi=(st.y===now.getFullYear()&&st.m===now.getMonth())?now.getDate()-1:-1,mpre=st.y+'-'+pad(st.m+1);
+  for(i=1;i<=mn;i++){mv.push((tot[mpre+'-'+pad(i)]||0)/3600);ml.push(i)}
+  /* 年 */
+  var yv=[],yl=[];
+  for(i=1;i<=12;i++){yv.push(totalSec(yr+'-'+pad(i))/3600);yl.push(i+'月')}
+  var yhi=yr===now.getFullYear()?now.getMonth():-1;
+  /* 标签打卡天数表 */
+  var py=String(yr),pm=st.y+'-'+pad(st.m+1);
   var rows=DB.tags.map(function(t){
     return '<tr><td>'+esc(t.name)+'</td>'+cellHtml(stat(t.id,''),true)+cellHtml(stat(t.id,py),true)+cellHtml(stat(t.id,pm),true)+'</tr>';
   }).join('');
-  var hasUn=DB.records.some(function(r){return !r.tagId});
-  if(hasUn){rows+='<tr><td>未分类</td>'+cellHtml(stat(null,''),false)+cellHtml(stat(null,py),false)+cellHtml(stat(null,pm),false)+'</tr>'}
+  if(DB.records.some(function(r){return !r.tagId})){rows+='<tr><td>未分类</td>'+cellHtml(stat(null,''),false)+cellHtml(stat(null,py),false)+cellHtml(stat(null,pm),false)+'</tr>'}
   function sumN(p){return DB.tags.reduce(function(a,t){return a+stat(t.id,p).n},0)}
   rows+='<tr class="total"><td>合计</td>'+cellHtml({n:sumN(''),sec:totalSec('')},true)+cellHtml({n:sumN(py),sec:totalSec(py)},true)+cellHtml({n:sumN(pm),sec:totalSec(pm)},true)+'</tr>';
-  $('#v-stats').innerHTML='<div class="wrap"><div class="hdr"><h2>打卡统计</h2></div>'
-    +'<div class="pick"><button data-act="yp">‹</button><span>'+st.y+'年</span><button data-act="yn">›</button><button data-act="mp">‹</button><span>'+(st.m+1)+'月</span><button data-act="mn">›</button></div>'
-    +'<table><thead><tr><th>标签</th><th>累计</th><th>'+st.y+'年</th><th>'+(st.m+1)+'月</th></tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<p class="muted" style="margin-top:12px">单位为「天」：同一标签单次计时 ≥ 5 分钟，当天算 1 天（同一标签一天最多 1 天，不同标签可各算 1 天）。小字为对应范围内的总时长。修改或删除记录后会自动重新计算。</p>'
+  $('#v-stats').innerHTML='<div class="wrap"><div class="hdr"><h2>专注统计</h2></div><div class="cards">'+cards+'</div>'
+    +chHead('wkp','wkn',wtitle)+barChart(wv,['周一','周二','周三','周四','周五','周六','周日'],whi,false)
+    +chHead('mp','mn',st.y+'年'+(st.m+1)+'月专注时长: '+hmText(totalSec(mpre)))+barChart(mv,ml,mhi,true)
+    +chHead('yp','yn',yr+'年专注时长: '+hmText(totalSec(py)))+barChart(yv,yl,yhi,false)
+    +'<h3 class="sec">各标签打卡天数</h3>'
+    +'<table><thead><tr><th>标签</th><th>累计</th><th>'+yr+'年</th><th>'+(st.y===yr?'':st.y+'年')+(st.m+1)+'月</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<p class="muted" style="margin-top:12px">单位为「天」：同一标签单次计时 ≥ 5 分钟，当天算 1 天（同一标签一天最多 1 天，不同标签可各算 1 天）。小字为对应范围内的总时长。图表单位为小时，亮色为今天 / 本月。修改或删除记录后会自动重新计算。</p>'
     +'<div class="tools"><button class="btn" data-act="manage">⚙ 管理标签</button><button class="btn" data-act="export">导出备份文件</button><button class="btn" data-act="copy">复制备份文本</button><button class="btn" data-act="impfile">导入备份文件</button><button class="btn" data-act="paste">粘贴导入备份</button></div></div>';
+}
+
+/* ---------- 修改记录 ---------- */
+async function editRecord(id){
+  var rec=DB.records.filter(function(r){return r.id===id})[0];if(!rec)return;
+  var opts=DB.tags.map(function(t){return '<option value="'+esc(t.id)+'"'+(t.id===rec.tagId?' selected':'')+'>'+esc(t.name)+'</option>'}).join('')+'<option value=""'+(rec.tagId?'':' selected')+'>未分类（不计打卡）</option>';
+  var r=await dialog({title:'修改记录 · '+rec.date,
+    html:'<label>标签<select id="eTag">'+opts+'</select></label><label>分钟<input id="eMin" type="number" inputmode="numeric" min="0" max="1440" value="'+Math.floor(rec.sec/60)+'"></label><label>秒<input id="eSec" type="number" inputmode="numeric" min="0" max="59" value="'+(rec.sec%60)+'"></label><p class="muted">修改后打卡天数、日历、统计会自动重新计算。</p>',
+    buttons:[{text:'取消',value:'no'},{text:'保存',value:'ok',cls:'primary'}],
+    validate:function(v,box){if(v!=='ok')return true;var m=Math.floor(+box.querySelector('#eMin').value||0),x=Math.floor(+box.querySelector('#eSec').value||0);
+      if(!(m>=0&&m<=1440&&x>=0&&x<60&&m*60+x>=1)){toast('请输入有效时长');return false}return true},
+    collect:function(box){return {tag:box.querySelector('#eTag').value,sec:Math.floor(+box.querySelector('#eMin').value||0)*60+Math.floor(+box.querySelector('#eSec').value||0)}}});
+  if(r.value==='ok'){rec.tagId=r.data.tag||null;rec.sec=r.data.sec;saveDB();toast('已修改');refreshViews()}
+}
+
+/* ---------- 倒数日 ---------- */
+function renderDays(){
+  var today=ymd(new Date()),h='<div class="wrap"><div class="hdr"><h2>倒数日</h2></div>';
+  if(!DB.days.length)h+='<p class="muted" style="text-align:center;margin:26px 0">还没有事件。<br>日期在未来显示「还有 N 天」，日期在过去显示「已过 N 天」。</p>';
+  var last=DB.days.length-1;
+  DB.days.forEach(function(e,i){
+    var n=diffDays(today,e.date),lab,big,cls;
+    if(n>0){lab='还有';big=n;cls='fut'}else if(n<0){lab='已过';big=-n;cls='past'}else{lab='';big='就是今天';cls='fut'}
+    h+='<div class="ev"><div class="evtop"><div><div class="evname">'+esc(e.name)+'</div><div class="evdate">'+e.date+' 周'+WK[new Date(e.date+'T00:00:00').getDay()]+'</div></div>'
+      +'<div class="evnum '+cls+'">'+(lab?'<small>'+lab+'</small>':'')+'<b>'+big+'</b>'+(lab?'<small>天</small>':'')+'</div></div>'
+      +'<div class="evbtns"><button data-act="daytop" data-id="'+esc(e.id)+'" aria-label="置顶"'+(i===0?' disabled':'')+'>⤒ 置顶</button>'
+      +'<button data-act="dayup" data-id="'+esc(e.id)+'" aria-label="上移"'+(i===0?' disabled':'')+'>↑</button>'
+      +'<button data-act="daydown" data-id="'+esc(e.id)+'" aria-label="下移"'+(i===last?' disabled':'')+'>↓</button>'
+      +'<button data-act="dayedit" data-id="'+esc(e.id)+'" aria-label="编辑">✏️</button>'
+      +'<button data-act="daydel" data-id="'+esc(e.id)+'" aria-label="删除">🗑</button></div></div>';
+  });
+  h+='<button class="btn primary" style="width:100%;margin-top:6px" data-act="dayadd">＋ 新建事件</button></div>';
+  $('#v-days').innerHTML=h;
+}
+async function editEvent(id){
+  var ev=id?DB.days.filter(function(e){return e.id===id})[0]:null;
+  if(!ev&&DB.days.length>=50){toast('最多 50 个事件');return}
+  var r=await dialog({title:ev?'编辑事件':'新建事件',
+    html:'<label>事件名称<input id="eName" maxlength="20" value="'+(ev?esc(ev.name):'')+'" placeholder="例如：考试、在一起"></label><label>日期<input id="eDate" type="date" value="'+(ev?ev.date:ymd(new Date()))+'"></label><p class="muted">日期在未来：倒数剩余天数；日期在过去：累计已过天数。</p>',
+    buttons:[{text:'取消',value:'no'},{text:'保存',value:'ok',cls:'primary'}],
+    validate:function(v,box){if(v!=='ok')return true;
+      if(!box.querySelector('#eName').value.trim()){toast('请输入事件名称');return false}
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(box.querySelector('#eDate').value)){toast('请选择日期');return false}return true},
+    collect:function(box){return {name:box.querySelector('#eName').value.trim().slice(0,20),date:box.querySelector('#eDate').value}}});
+  if(r.value!=='ok')return;
+  if(ev){ev.name=r.data.name;ev.date=r.data.date}else DB.days.push({id:uid(),name:r.data.name,date:r.data.date});
+  saveDB();renderDays();
+}
+async function delEvent(id){
+  var ev=DB.days.filter(function(e){return e.id===id})[0];if(!ev)return;
+  var r=await dialog({title:'删除事件',html:'<p>'+esc(ev.name)+'（'+ev.date+'）</p>',buttons:[{text:'取消',value:'no'},{text:'删除',value:'del',cls:'danger'}]});
+  if(r.value==='del'){DB.days=DB.days.filter(function(e){return e.id!==id});saveDB();renderDays()}
+}
+function moveEvent(id,dir){
+  var i=-1;DB.days.forEach(function(e,k){if(e.id===id)i=k});if(i<0)return;
+  var e=DB.days.splice(i,1)[0];
+  if(dir===0)DB.days.unshift(e);else DB.days.splice(Math.max(0,Math.min(DB.days.length,i+dir)),0,e);
+  saveDB();renderDays();
 }
 
 /* ---------- 备份 ---------- */
@@ -686,8 +830,16 @@ var acts={
   closeSheet:function(){closeSheet()},
   tagadd:function(){var i=$('#newTag');if(addTag(i?i.value:''))renderSheet()},
   tagdel:function(el){deleteTag(el.dataset.id)},
-  yp:function(){st.y--;renderStats()},yn:function(){st.y++;renderStats()},
-  mp:function(){st.m=(st.m+11)%12;renderStats()},mn:function(){st.m=(st.m+1)%12;renderStats()},
+  recedit:function(el){editRecord(el.dataset.id)},
+  dayadd:function(){editEvent('')},
+  dayedit:function(el){editEvent(el.dataset.id)},
+  daydel:function(el){delEvent(el.dataset.id)},
+  dayup:function(el){moveEvent(el.dataset.id,-1)},
+  daydown:function(el){moveEvent(el.dataset.id,1)},
+  daytop:function(el){moveEvent(el.dataset.id,0)},
+  wkp:function(){wk--;renderStats()},wkn:function(){wk++;renderStats()},
+  mp:function(){st.m--;if(st.m<0){st.m=11;st.y--}renderStats()},mn:function(){st.m++;if(st.m>11){st.m=0;st.y++}renderStats()},
+  yp:function(){yr--;renderStats()},yn:function(){yr++;renderStats()},
   export:function(){exportData()},copy:function(){copyData()},
   impfile:function(){$('#file').click()},paste:function(){pasteImport()}
 };
