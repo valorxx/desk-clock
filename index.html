@@ -568,6 +568,7 @@ function lockLandscape(want){
     else if(o.unlock)o.unlock();
   }catch(e){}
 }
+document.addEventListener('fullscreenchange',function(){lockLandscape(isFsView(view));setTimeout(layout,200)});
 window.addEventListener('resize',layout);
 window.addEventListener('orientationchange',function(){setTimeout(layout,200)});
 
